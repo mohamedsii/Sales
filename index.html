@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="إدارة المبيعات">
+<title>إدارة المبيعات والمخزون</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0c0e12; --bg2:#14171d; --card:rgba(255,255,255,.06); --card-b:rgba(255,255,255,.12);
+  --glow:rgba(120,170,255,.35); --txt:#eef1f6; --mut:#9aa3b2; --acc:#7aa7ff;
+  --green:#22c55e; --red:#ef4444; --gold:#e8c26a; --r:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,"Segoe UI",Tahoma,"Noto Naskh Arabic","Noto Sans Arabic",Arial,sans-serif;
+  -webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+body{background:
+  radial-gradient(900px 500px at 85% -10%,rgba(122,167,255,.14),transparent 60%),
+  radial-gradient(700px 500px at 0% 110%,rgba(232,194,106,.09),transparent 60%),
+  linear-gradient(180deg,#0c0e12,#10131a 60%,#0c0e12);
+  background-attachment:fixed;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(24px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+.app{max-width:640px;margin:0 auto;padding:12px 14px}
+header.top{text-align:center;padding:6px 0 10px}
+header.top h1{margin:0;font-size:18px;font-weight:800;letter-spacing:.3px;
+  background:linear-gradient(90deg,var(--gold),#fff,var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+nav{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  padding:8px 0 12px;background:linear-gradient(180deg,var(--bg) 70%,transparent)}
+nav button{height:48px;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:0 4px;font-size:13px;font-weight:700;line-height:1.2;color:var(--mut);
+  background:var(--card);border:1px solid var(--card-b);border-radius:14px;cursor:pointer;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:inherit;
+  transition:transform .15s,background .2s,box-shadow .2s,color .2s}
+nav button:active{transform:scale(.94)}
+nav button.on{color:#fff;background:linear-gradient(145deg,rgba(122,167,255,.32),rgba(122,167,255,.1));
+  border-color:rgba(122,167,255,.65);box-shadow:0 0 18px var(--glow),inset 0 0 12px rgba(122,167,255,.15)}
+
+section{display:none;animation:fade .3s ease}
+section.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);padding:14px;margin-bottom:14px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 8px 28px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.07)}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--gold)}
+label{display:block;font-size:12px;color:var(--mut);margin:0 2px 5px}
+input{width:100%;height:46px;padding:0 12px;font-size:16px;font-family:inherit;color:var(--txt);
+  background:rgba(0,0,0,.35);border:1px solid var(--card-b);border-radius:12px;outline:none;transition:border .2s,box-shadow .2s}
+input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(122,167,255,.2)}
+input::placeholder{color:#5d6675}
+.row{display:grid;gap:10px;margin-bottom:10px}
+.r2{grid-template-columns:1fr 1fr}.r3{grid-template-columns:1fr 1fr 1fr}
+.f{min-width:0}
+
+.btn{width:100%;height:48px;border:1px solid transparent;border-radius:14px;font-size:15px;font-weight:800;
+  font-family:inherit;color:#fff;cursor:pointer;transition:transform .12s,filter .2s,box-shadow .2s;touch-action:manipulation}
+.btn:active{transform:scale(.95);filter:brightness(1.15)}
+.b-acc{background:linear-gradient(145deg,#4f7fe0,#34569f);box-shadow:0 6px 18px rgba(79,127,224,.35)}
+.b-green{background:linear-gradient(145deg,#22c55e,#15803d);box-shadow:0 6px 18px rgba(34,197,94,.3);font-size:22px}
+.b-red{background:linear-gradient(145deg,#ef4444,#b91c1c);box-shadow:0 6px 18px rgba(239,68,68,.3);font-size:26px}
+.b-gold{background:linear-gradient(145deg,#c79a34,#8a6a1c);box-shadow:0 6px 18px rgba(199,154,52,.28)}
+.b-ghost{background:var(--card);border-color:var(--card-b);color:var(--txt)}
+.mt{margin-top:10px}
+
+.price-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;margin-bottom:10px;
+  background:rgba(0,0,0,.25);border:1px solid var(--card-b);border-radius:14px;position:relative}
+.price-item.hl{border-color:rgba(232,194,106,.6);box-shadow:0 0 16px rgba(232,194,106,.18)}
+.price-item .pct{font-size:13px;color:var(--mut)}
+.price-item .pv{font-size:22px;font-weight:800;color:#fff}
+.price-item .pf{font-size:12px;color:var(--green);text-align:left;white-space:nowrap}
+.price-item .pf b{display:block;font-size:15px}
+
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tot{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);padding:12px;text-align:center;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.tot span{font-size:12px;color:var(--mut)}
+.tot b{display:block;font-size:20px;margin-top:4px}
+.tot.s b{color:var(--acc)}.tot.p b{color:var(--green)}
+
+.list-item{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:8px;background:rgba(0,0,0,.25);
+  border:1px solid var(--card-b);border-radius:14px}
+.list-item .info{flex:1;min-width:0}
+.list-item .nm{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item .sub{font-size:12px;color:var(--mut);margin-top:3px;line-height:1.5}
+.list-item.ret{border-color:rgba(239,68,68,.45)}
+.x{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.12);
+  color:#ff8c8c;font-size:20px;line-height:1;cursor:pointer;font-family:inherit;transition:transform .12s}
+.x:active{transform:scale(.88)}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.hint{font-size:12px;color:var(--gold);min-height:18px;margin:-2px 2px 8px}
+.empty{text-align:center;color:var(--mut);padding:18px;font-size:14px}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;background:rgba(122,167,255,.15);color:var(--acc)}
+.low{background:rgba(239,68,68,.15);color:#ff8c8c}
+
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.modal.on{display:flex}
+.sheet{width:100%;max-width:640px;max-height:86vh;overflow:auto;background:var(--bg2);border:1px solid var(--card-b);
+  border-radius:24px 24px 0 0;padding:16px 14px calc(18px + env(safe-area-inset-bottom));animation:up .28s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet h3{margin:0 0 12px;font-size:16px;color:var(--gold);display:flex;justify-content:space-between;align-items:center}
+.sheet .close{background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer}
+.day-item{cursor:pointer}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sum div{background:rgba(0,0,0,.3);border-radius:12px;padding:10px;text-align:center;font-size:12px;color:var(--mut)}
+.sum b{display:block;font-size:17px;color:var(--txt);margin-top:3px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;z-index:99;
+  background:rgba(30,34,43,.96);border:1px solid var(--card-b);padding:11px 18px;border-radius:14px;font-size:14px;
+  pointer-events:none;transition:.25s;max-width:90%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.note{font-size:12.5px;color:var(--mut);line-height:1.8;margin:0 0 12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top"><h1>إدارة المبيعات والحسابات والمخزون</h1></header>
+
+  <nav id="nav">
+    <button data-t="price" class="on">سعر البيع</button>
+    <button data-t="products">دليل المنتجات</button>
+    <button data-t="sales">تسجيل المبيعات</button>
+    <button data-t="backup">نسخ ونقل البيانات</button>
+  </nav>
+
+  <!-- 1: سعر البيع -->
+  <section id="price" class="on">
+    <div class="card">
+      <h2>سعر الجملة / التكلفة</h2>
+      <label>أدخل التكلفة الأساسية</label>
+      <input id="pCost" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="card">
+      <h2>أسعار البيع المقترحة</h2>
+      <div id="priceOut"></div>
+    </div>
+  </section>
+
+  <!-- 2: دليل المنتجات -->
+  <section id="products">
+    <div class="card">
+      <h2>إضافة / تحديث منتج</h2>
+      <div class="row"><div class="f"><label>اسم المنتج</label><input id="gName" placeholder="مثال: سكر" autocomplete="off"></div></div>
+      <div class="row r3">
+        <div class="f"><label>العدد المتاح</label><input id="gStock" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="f"><label>الوحدة</label><input id="gUnit" placeholder="كيلو"></div>
+        <div class="f"><label>سعر الجملة</label><input id="gCost" type="number" inputmode="decimal" placeholder="0.00"></div>
+      </div>
+      <button class="btn b-acc" id="gSave">حفظ المنتج وتحديث المخزون</button>
+      <p class="note mt" style="margin-bottom:0">إذا كان الاسم موجوداً مسبقاً سيتم تحديث بياناته (المخزون يُستبدل بالعدد المُدخل). اضغط على أي منتج لتعديله.</p>
+    </div>
+    <div class="card">
+      <h2>المنتجات (<span id="gCount">0</span>)</h2>
+      <div id="gList"></div>
+    </div>
+  </section>
+
+  <!-- 3: تسجيل المبيعات -->
+  <section id="sales">
+    <div class="totals">
+      <div class="tot s"><span>إجمالي المبيعات</span><b id="tSales">0</b></div>
+      <div class="tot p"><span>إجمالي صافي الربح</span><b id="tProfit">0</b></div>
+    </div>
+    <div class="card">
+      <h2>سطور مبيعات اليوم (<span id="sCount">0</span>)</h2>
+      <div id="sList"></div>
+    </div>
+    <div class="card">
+      <h2>بيعة جديدة</h2>
+      <div class="row"><div class="f"><label>اسم المنتج</label>
+        <input id="sName" list="dl" placeholder="اختر أو اكتب الاسم" autocomplete="off"><datalist id="dl"></datalist></div></div>
+      <div class="hint" id="sHint"></div>
+      <div class="row r3">
+        <div class="f"><label>سعر الجملة</label><input id="sCost" type="number" inputmode="decimal" placeholder="0.00"></div>
+        <div class="f"><label>العدد المباع</label><input id="sQty" type="number" inputmode="decimal" placeholder="0"></div>
+        <div class="f"><label>سعر بيع الوحدة</label><input id="sPrice" type="number" inputmode="decimal" placeholder="0.00"></div>
+      </div>
+      <div class="row r2">
+        <button class="btn b-green" id="sAdd" title="إضافة بيعة">+</button>
+        <button class="btn b-red" id="sRet" title="مرتجع / خصم">−</button>
+      </div>
+    </div>
+    <div class="row r2">
+      <button class="btn b-gold" id="closeDay">🔒 تقفيل اليوم وحفظ المبيعات</button>
+      <button class="btn b-ghost" id="showDays">الأيام المحفوظة</button>
+    </div>
+    <button class="btn b-acc mt" id="closeMonth">📅 تقفيل الشهر بالكامل</button>
+  </section>
+
+  <!-- 4: نسخ ونقل -->
+  <section id="backup">
+    <div class="card">
+      <h2>تصدير البيانات</h2>
+      <p class="note">ينزّل ملف JSON يحتوي على المخزون والمبيعات الحالية وسجل الأيام والشهور المحفوظة.</p>
+      <button class="btn b-acc" id="exp">تصدير نسخة احتياطية</button>
+    </div>
+    <div class="card">
+      <h2>استيراد واستعادة</h2>
+      <p class="note">اختر ملف JSON من أي جهاز آخر. سيتم استبدال البيانات الحالية بالكامل.</p>
+      <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+      <button class="btn b-gold" id="imp">استيراد من ملف</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+const KEY='salesApp.v1';
+let S={products:[],sales:[],days:[],months:[]};
+try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&typeof r==='object')S=Object.assign(S,r)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('تعذر الحفظ: مساحة التخزين ممتلئة')}};
+const $=id=>document.getElementById(id);
+const num=v=>{const n=parseFloat(String(v).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)));return isFinite(n)?n:NaN};
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const norm=s=>s.trim().replace(/\s+/g,' ');
+const findP=n=>S.products.find(p=>p.name.trim()===norm(n));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+function buzz(){try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}}
+const dateStr=d=>new Date(d).toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+const timeStr=d=>new Date(d).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+
+/* ---------- Modal helpers ---------- */
+function openSheet(html){$('sheet').innerHTML=html;$('modal').classList.add('on')}
+function closeSheet(){$('modal').classList.remove('on')}
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeSheet()});
+function ask(title,msg,okText,cb){
+  openSheet(`<h3>${esc(title)}</h3><p class="note" style="font-size:14px">${esc(msg)}</p>
+  <div class="row r2"><button class="btn b-ghost" id="cNo">إلغاء</button><button class="btn b-acc" id="cYes">${esc(okText)}</button></div>`);
+  $('cNo').onclick=closeSheet;$('cYes').onclick=()=>{closeSheet();cb()};
+}
+
+/* ---------- Tabs ---------- */
+$('nav').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;buzz();
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  window.scrollTo({top:0});
+});
+
+/* ---------- 1) Price ---------- */
+function renderPrice(){
+  const c=num($('pCost').value),out=$('priceOut');
+  if(!(c>0)){out.innerHTML='<div class="empty">أدخل سعر الجملة لعرض الأسعار المقترحة</div>';return}
+  const rows=[
+    {l:'ربح 20% على التكلفة',p:c*1.20},
+    {l:'ربح 25% على التكلفة',p:c*1.25},
+    {l:'ربح 30% على التكلفة',p:c*1.30},
+    {l:'صافي ربح 30% من سعر البيع',p:c/0.70,hl:true}
+  ];
+  out.innerHTML=rows.map(r=>{const pr=r.p-c;
+    return `<div class="price-item ${r.hl?'hl':''}"><div><div class="pct">${r.l}</div><div class="pv">${fmt(r.p)}</div></div>
+    <div class="pf">صافي الربح<b>${fmt(pr)}</b>${r.hl?'':`<span style="color:var(--mut)">${fmt(pr/r.p*100)}% من البيع</span>`}</div></div>`}).join('');
+}
+$('pCost').addEventListener('input',renderPrice);
+
+/* ---------- 2) Products ---------- */
+function renderProducts(){
+  S.products.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  $('gCount').textContent=S.products.length;
+  $('gList').innerHTML=S.products.length?S.products.map(p=>
+    `<div class="list-item" data-id="${p.id}"><div class="info" data-edit="${p.id}" style="cursor:pointer">
+      <div class="nm">${esc(p.name)}</div>
+      <div class="sub"><span class="badge ${p.stock<=0?'low':''}">${fmt(p.stock)} ${esc(p.unit||'')}</span> · جملة: ${fmt(p.cost)}</div></div>
+      <button class="x" data-del="${p.id}" aria-label="حذف">×</button></div>`).join(''):'<div class="empty">لا توجد منتجات بعد</div>';
+  $('dl').innerHTML=S.products.map(p=>`<option value="${esc(p.name)}">`).join('');
+}
+$('gSave').onclick=()=>{
+  const name=norm($('gName').value),stock=num($('gStock').value),cost=num($('gCost').value),unit=norm($('gUnit').value);
+  if(!name)return toast('اكتب اسم المنتج');
+  if(isNaN(stock)||stock<0)return toast('أدخل العدد المتاح');
+  if(isNaN(cost)||cost<0)return toast('أدخل سعر الجملة');
+  const ex=findP(name);
+  if(ex){ex.stock=stock;ex.unit=unit;ex.cost=cost}else S.products.push({id:uid(),name,stock,unit,cost});
+  save();renderProducts();buzz();toast(ex?'تم تحديث المنتج':'تم حفظ المنتج');
+  ['gName','gStock','gUnit','gCost'].forEach(i=>$(i).value='');
+};
+$('gList').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');
+  if(d){const p=S.products.find(x=>x.id===d.dataset.del);if(!p)return;
+    ask('حذف منتج',`هل تريد حذف "${p.name}" من الدليل؟`,'حذف',()=>{S.products=S.products.filter(x=>x.id!==p.id);save();renderProducts();toast('تم الحذف')});return}
+  const ed=e.target.closest('[data-edit]');
+  if(ed){const p=S.products.find(x=>x.id===ed.dataset.edit);if(!p)return;
+    $('gName').value=p.name;$('gStock').value=p.stock;$('gUnit').value=p.unit||'';$('gCost').value=p.cost;
+    window.scrollTo({top:0,behavior:'smooth'});toast('عدّل البيانات ثم اضغط حفظ')}
+});
+
+/* ---------- 3) Sales ---------- */
+function lineCalc(l){const sg=l.type==='ret'?-1:1;return{sales:sg*l.price*l.qty,profit:sg*(l.price-l.cost)*l.qty}}
+function totalsOf(lines){return lines.reduce((a,l)=>{const c=lineCalc(l);a.sales+=c.sales;a.profit+=c.profit;return a},{sales:0,profit:0})}
+function lineHTML(l,del){
+  const c=lineCalc(l);
+  return `<div class="list-item ${l.type==='ret'?'ret':''}"><div class="info">
+    <div class="nm">${l.type==='ret'?'↩ مرتجع: ':''}${esc(l.name)}</div>
+    <div class="sub">${fmt(l.qty)} × ${fmt(l.price)} = <b>${fmt(c.sales)}</b> · ربح <span class="${c.profit>=0?'pos':'neg'}">${fmt(c.profit)}</span> · ${timeStr(l.at)}</div></div>
+    ${del?`<button class="x" data-del="${l.id}" aria-label="حذف">×</button>`:''}</div>`;
+}
+function renderSales(){
+  const t=totalsOf(S.sales);
+  $('tSales').textContent=fmt(t.sales);$('tProfit').textContent=fmt(t.profit);
+  $('tProfit').style.color=t.profit<0?'var(--red)':'';
+  $('sCount').textContent=S.sales.length;
+  $('sList').innerHTML=S.sales.length?S.sales.slice().reverse().map(l=>lineHTML(l,true)).join(''):'<div class="empty">لا توجد مبيعات في هذا اليوم</div>';
+}
+function onPickProduct(){
+  const p=findP($('sName').value);
+  if(p){$('sCost').value=p.cost;$('sHint').textContent=`المتاح في المخزون: ${fmt(p.stock)} ${p.unit||''}`}
+  else $('sHint').textContent='';
+}
+$('sName').addEventListener('input',onPickProduct);
+$('sName').addEventListener('change',onPickProduct);
+function addLine(type){
+  const name=norm($('sName').value),cost=num($('sCost').value),qty=num($('sQty').value),price=num($('sPrice').value);
+  if(!name)return toast('اكتب أو اختر اسم المنتج');
+  if(isNaN(cost)||cost<0)return toast('أدخل سعر الجملة');
+  if(isNaN(qty)||qty<=0)return toast('أدخل العدد');
+  if(isNaN(price)||price<0)return toast('أدخل سعر البيع');
+  const p=findP(name);
+  if(type==='sale'&&p&&qty>p.stock)return toast(`المتاح فقط ${fmt(p.stock)} ${p.unit||''}`);
+  if(p)p.stock+=type==='sale'?-qty:qty;
+  S.sales.push({id:uid(),type,name,cost,qty,price,at:Date.now(),pid:p?p.id:null});
+  save();renderSales();renderProducts();buzz();
+  toast(type==='sale'?'تمت إضافة البيعة':'تم تسجيل المرتجع');
+  ['sName','sCost','sQty','sPrice'].forEach(i=>$(i).value='');$('sHint').textContent='';
+}
+$('sAdd').onclick=()=>addLine('sale');
+$('sRet').onclick=()=>addLine('ret');
+$('sList').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');if(!d)return;
+  const l=S.sales.find(x=>x.id===d.dataset.del);if(!l)return;
+  ask('حذف سطر',`حذف "${l.name}" وإرجاع الكمية للمخزون؟`,'حذف',()=>{
+    const p=S.products.find(x=>x.id===l.pid)||findP(l.name);
+    if(p)p.stock+=l.type==='sale'?l.qty:-l.qty;
+    S.sales=S.sales.filter(x=>x.id!==l.id);save();renderSales();renderProducts();toast('تم الحذف');
+  });
+});
+
+function pushDay(){
+  const t=totalsOf(S.sales),now=Date.now();
+  S.days.push({id:uid(),at:now,lines:S.sales,sales:t.sales,profit:t.profit});
+  S.sales=[];save();renderSales();
+}
+$('closeDay').onclick=()=>{
+  if(!S.sales.length)return toast('لا توجد مبيعات لتقفيلها');
+  const t=totalsOf(S.sales);
+  ask('تقفيل اليوم',`المبيعات: ${fmt(t.sales)} — الربح: ${fmt(t.profit)}\nسيتم حفظ اليوم وتفريغ الشاشة ليوم جديد.`,'تقفيل',()=>{pushDay();buzz();toast('تم حفظ اليوم 🔒')});
+};
+
+function daysSheet(){
+  const list=S.days.slice().reverse();
+  openSheet(`<h3>الأيام المحفوظة (${S.days.length})<button class="close" id="xx">×</button></h3>`+
+    (list.length?list.map(d=>`<div class="list-item day-item" data-day="${d.id}"><div class="info">
+      <div class="nm">${dateStr(d.at)}</div><div class="sub">${timeStr(d.at)} · ${d.lines.length} سطر · مبيعات <b>${fmt(d.sales)}</b> · ربح <span class="${d.profit>=0?'pos':'neg'}">${fmt(d.profit)}</span></div></div><span style="color:var(--mut)">‹</span></div>`).join(''):'<div class="empty">لا توجد أيام محفوظة</div>'));
+  $('xx').onclick=closeSheet;
+}
+function daySheet(id){
+  const d=S.days.find(x=>x.id===id);if(!d)return;
+  openSheet(`<h3>${dateStr(d.at)}<button class="close" id="xx">×</button></h3>
+    <div class="sum"><div>إجمالي المبيعات<b>${fmt(d.sales)}</b></div><div>صافي الربح<b class="${d.profit>=0?'pos':'neg'}">${fmt(d.profit)}</b></div></div>
+    ${d.lines.map(l=>lineHTML(l,false)).join('')}
+    <div class="row r2 mt"><button class="btn b-ghost" id="back">رجوع</button><button class="btn b-ghost" id="delDay" style="color:#ff8c8c">حذف اليوم</button></div>`);
+  $('xx').onclick=closeSheet;$('back').onclick=daysSheet;
+  $('delDay').onclick=()=>ask('حذف يوم محفوظ','سيتم حذف هذا اليوم من السجل نهائياً (لن يتغير المخزون).','حذف',()=>{S.days=S.days.filter(x=>x.id!==id);save();daysSheet()});
+}
+$('showDays').onclick=daysSheet;
+$('sheet').addEventListener('click',e=>{const d=e.target.closest('[data-day]');if(d)daySheet(d.dataset.day)});
+
+function download(name,text,type){
+  const b=new Blob([text],{type}),a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+function monthReport(days,tot){
+  const rows=days.map(d=>`<tr><td>${dateStr(d.at)}</td><td>${d.lines.length}</td><td>${fmt(d.sales)}</td><td>${fmt(d.profit)}</td></tr>`).join('');
+  const det=days.map(d=>`<h3>${dateStr(d.at)} — ${timeStr(d.at)}</h3><table><tr><th>المنتج</th><th>النوع</th><th>العدد</th><th>سعر البيع</th><th>الإجمالي</th><th>الربح</th></tr>`+
+    d.lines.map(l=>{const c=lineCalc(l);return `<tr><td>${esc(l.name)}</td><td>${l.type==='ret'?'مرتجع':'بيع'}</td><td>${fmt(l.qty)}</td><td>${fmt(l.price)}</td><td>${fmt(c.sales)}</td><td>${fmt(c.profit)}</td></tr>`}).join('')+'</table>').join('');
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تقرير الشهر</title>
+<style>body{font-family:Tahoma,Arial,sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse;margin-bottom:18px}th,td{border:1px solid #bbb;padding:7px;text-align:center;font-size:14px}th{background:#eee}h1,h3{margin:12px 0}.t{font-size:18px;font-weight:bold}</style></head><body>
+<h1>تقرير الشهر الشامل</h1><p class="t">إجمالي المبيعات: ${fmt(tot.sales)} — صافي الربح: ${fmt(tot.profit)} — عدد الأيام: ${days.length}</p>
+<table><tr><th>اليوم</th><th>عدد السطور</th><th>المبيعات</th><th>الربح</th></tr>${rows}</table><h2>التفاصيل</h2>${det}</body></html>`;
+}
+$('closeMonth').onclick=()=>{
+  if(!S.days.length&&!S.sales.length)return toast('لا توجد بيانات لتقفيلها');
+  ask('تقفيل الشهر',`سيتم تقفيل مبيعات اليوم المفتوحة (إن وجدت)، وتصدير تقرير شامل، ثم تصفير سجلات الأيام لشهر جديد.\nالمخزون لن يتأثر.`,'تقفيل الشهر',()=>{
+    if(S.sales.length)pushDay();
+    const days=S.days.slice(),tot=days.reduce((a,d)=>(a.sales+=d.sales,a.profit+=d.profit,a),{sales:0,profit:0});
+    const stamp=new Date().toISOString().slice(0,10);
+    download(`تقرير-الشهر-${stamp}.html`,monthReport(days,tot),'text/html');
+    S.months.push({id:uid(),at:Date.now(),daysCount:days.length,sales:tot.sales,profit:tot.profit});
+    S.days=[];save();renderSales();buzz();toast('تم تقفيل الشهر وتنزيل التقرير 📅');
+  });
+};
+
+/* ---------- 4) Backup ---------- */
+$('exp').onclick=()=>{
+  download(`نسخة-احتياطية-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify({app:'salesApp',v:1,exportedAt:Date.now(),...S},null,1),'application/json');
+  toast('تم تصدير البيانات');
+};
+$('imp').onclick=()=>$('impFile').click();
+$('impFile').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(!d||!Array.isArray(d.products))throw 0;
+      ask('استعادة البيانات','سيتم استبدال كل البيانات الحالية بمحتوى الملف. هل أنت متأكد؟','استعادة',()=>{
+        S={products:d.products||[],sales:d.sales||[],days:d.days||[],months:d.months||[]};
+        save();renderAll();toast('تمت استعادة البيانات ✔');
+      });
+    }catch(_){toast('الملف غير صالح')}
+    $('impFile').value='';
+  };
+  r.readAsText(f);
+};
+
+function renderAll(){renderPrice();renderProducts();renderSales()}
+renderAll();
+
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+})();
+</script>
+</body>
+</html>
