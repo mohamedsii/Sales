@@ -92,6 +92,9 @@ ul{list-style:none;margin:0;padding:0}
 .sugg-item b{font-size:14px;font-weight:600;word-break:break-word}
 .sugg-item span{font-size:12px;color:#34d399;white-space:nowrap}
 .hint{font-size:12px;color:#fbbf24;min-height:0}
+.chk{display:flex;align-items:center;gap:10px;font-size:13px;color:#cbd5e1;line-height:1.5}
+.chk input{width:22px;height:22px;flex:none;accent-color:#10b981}
+.calc{font-size:12px;color:#34d399;line-height:1.7;min-height:0}
 
 .foot{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid #1e293b}
 .modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:16px;
@@ -146,6 +149,7 @@ ul{list-style:none;margin:0;padding:0}
       <div class="col" style="margin-bottom:20px">
         <input class="inp" type="text" id="invName" placeholder="اسم المنتج (مثال: أرز، زيت، سكر...)" autocomplete="off">
         <input class="inp" type="number" inputmode="decimal" step="any" id="invCost" placeholder="سعر الجملة للوحدة">
+        <label class="chk"><input type="checkbox" id="invWeight" onchange="syncInvUi()"> يُباع بالوزن (سعر الجملة للكيلو والبيع بالجرام)</label>
         <input class="inp" type="number" inputmode="decimal" step="any" id="invQty" placeholder="الكمية المتاحة (اختياري)">
         <p class="sub" style="margin:0">لو سجّلت كمية هتتخصم تلقائياً مع كل بيعة. ولو سيبتها فاضية المنتج بيتسجل من غير متابعة مخزون. لو المنتج موجود والكمية مكتوبة بتتضاف على المتاح، وتقدر تغيّر سعر الجملة بنفس الاسم.</p>
         <button class="btn b-green press" onclick="saveProduct()">حفظ المنتج في الدليل</button>
@@ -171,10 +175,11 @@ ul{list-style:none;margin:0;padding:0}
         <div id="stockHint" class="hint"></div>
 
         <div class="row">
-          <input class="inp" type="number" inputmode="decimal" step="any" id="saleCost" placeholder="سعر الجملة">
-          <input class="inp" type="number" inputmode="decimal" step="any" id="saleQty" placeholder="الكمية" value="1">
+          <input class="inp" type="number" inputmode="decimal" step="any" id="saleCost" placeholder="سعر الجملة (للوحدة)" oninput="updateCalc()">
+          <input class="inp" type="number" inputmode="decimal" step="any" id="saleQty" placeholder="الكمية" value="1" oninput="updateCalc()">
         </div>
-        <input class="inp" type="number" inputmode="decimal" step="any" id="salePrice" placeholder="سعر البيع للوحدة">
+        <input class="inp" type="number" inputmode="decimal" step="any" id="salePrice" placeholder="سعر البيع للوحدة" oninput="updateCalc()">
+        <div id="calcLine" class="calc"></div>
 
         <div class="row" style="margin-top:4px">
           <button class="btn b-green press" onclick="addSale('+')">إضافة (+)</button>
@@ -238,7 +243,7 @@ function load(k){try{const v=JSON.parse(localStorage.getItem(k));return Array.is
 function cleanInv(arr){
   return (arr||[]).filter(p=>p&&p.name).map(p=>{
     const n=(p.stock===null||p.stock===undefined||p.stock==='')?null:Number(p.stock);
-    return {name:String(p.name),cost:Number(p.cost)||0,stock:(n!==null&&isFinite(n))?n:null,unit:p.unit||''};
+    return {name:String(p.name),cost:Number(p.cost)||0,stock:(n!==null&&isFinite(n))?n:null,unit:p.unit||'',weight:!!p.weight};
   });
 }
 let inventory=cleanInv(load(K_INV));
@@ -281,17 +286,25 @@ function saveProduct(){
   if(!name||isNaN(cost)||cost<0){alert('يرجى إدخال اسم المنتج وسعر الجملة بشكل صحيح');return}
   if(qty!==null&&isNaN(qty)){alert('الكمية غير صحيحة');return}
 
+  const weight=$('invWeight').checked;
   const ex=findProd(name);
   if(ex){
-    ex.cost=cost;
-    if(qty!==null)ex.stock=(hasStock(ex)?ex.stock:0)+qty;
+    ex.cost=cost;ex.weight=weight;
+    if(qty!==null)ex.stock=Math.round(((hasStock(ex)?ex.stock:0)+qty)*1e6)/1e6;
   }else{
-    inventory.push({name,cost,stock:qty,unit:''});
+    inventory.push({name,cost,stock:qty,unit:'',weight});
   }
   inventory.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   save();
   ['invName','invCost','invQty'].forEach(i=>$(i).value='');
+  $('invWeight').checked=false;syncInvUi();
   renderInventory();
+}
+
+function syncInvUi(){
+  const w=$('invWeight').checked;
+  $('invCost').placeholder=w?'سعر الجملة للكيلو':'سعر الجملة للوحدة';
+  $('invQty').placeholder=w?'الكمية المتاحة بالكيلو (اختياري)':'الكمية المتاحة (اختياري)';
 }
 
 function deleteProduct(index){
@@ -306,8 +319,8 @@ function renderInventory(){
   const list=$('inventoryList');
   if(!inventory.length){list.innerHTML='<li class="empty">لا توجد منتجات مسجلة بعد</li>';return}
   list.innerHTML=inventory.map((it,i)=>
-    '<li class="item"><div><strong class="t">'+esc(it.name)+'</strong><span class="m">الجملة: '+fmt(it.cost)+
-    (hasStock(it)?' | المتاح: '+(+it.stock.toFixed(2))+(it.unit?' '+esc(it.unit):''):'')+
+    '<li class="item"><div><strong class="t">'+esc(it.name)+'</strong><span class="m">الجملة: '+fmt(it.cost)+(it.weight?' / كيلو':'')+
+    (hasStock(it)?' | المتاح: '+(+it.stock.toFixed(3))+(it.weight?' كيلو':(it.unit?' '+esc(it.unit):'')):'')+
     '</span></div><button class="x press" onclick="deleteProduct('+i+')" aria-label="حذف">&times;</button></li>'
   ).join('');
 }
@@ -316,7 +329,7 @@ function renderInventory(){
 function hideSugg(){$('suggList').classList.remove('on')}
 function updateHint(){
   const p=findProd($('saleProductName').value);
-  $('stockHint').textContent=(p&&hasStock(p))?('المتاح في المخزون: '+(+p.stock.toFixed(2))+(p.unit?' '+p.unit:'')):'';
+  $('stockHint').textContent=(p&&hasStock(p))?('المتاح في المخزون: '+(+p.stock.toFixed(3))+(p.weight?' كيلو':(p.unit?' '+p.unit:''))):'';
 }
 function onNameInput(){
   const raw=$('saleProductName').value;
@@ -324,6 +337,7 @@ function onNameInput(){
   updateHint();
   const ex=findProd(raw);
   if(ex)$('saleCost').value=ex.cost;
+  applyProdMode();
   if(q.length<2){hideSugg();return}
 
   const hits=[];
@@ -340,7 +354,7 @@ function onNameInput(){
   const box=$('suggList');
   if(!hits.length){hideSugg();return}
   box.innerHTML=hits.slice(0,8).map(h=>
-    '<div class="sugg-item" onclick="pickProduct('+h.i+')"><b>'+esc(h.p.name)+'</b><span>جملة: '+fmt(h.p.cost)+'</span></div>'
+    '<div class="sugg-item" onclick="pickProduct('+h.i+')"><b>'+esc(h.p.name)+'</b><span>جملة: '+fmt(h.p.cost)+(h.p.weight?' / كيلو':'')+'</span></div>'
   ).join('');
   box.classList.add('on');
 }
@@ -348,8 +362,39 @@ function pickProduct(i){
   const p=inventory[i];if(!p)return;
   $('saleProductName').value=p.name;
   $('saleCost').value=p.cost;
-  hideSugg();updateHint();
-  $('salePrice').focus();
+  hideSugg();updateHint();applyProdMode();
+  (isW(p)?$('saleQty'):$('salePrice')).focus();
+}
+
+/* البيع بالوزن (الجرام) */
+const isW=p=>!!p&&!!p.weight;
+function curProd(){return findProd($('saleProductName').value)}
+function qtyLabel(r){
+  const q=Math.abs(Number(r.qty)||0);
+  return r.w?(Math.round(q*1000)+' جم'):String(+q.toFixed(2));
+}
+function applyProdMode(){
+  const w=isW(curProd()),qi=$('saleQty');
+  if(w&&qi.value==='1')qi.value='';
+  if(!w&&qi.value==='')qi.value='1';
+  syncSaleUi();
+}
+function syncSaleUi(){
+  const w=isW(curProd());
+  $('saleQty').placeholder=w?'الوزن بالجرام':'الكمية';
+  $('saleCost').placeholder=w?'سعر الجملة (للكيلو)':'سعر الجملة (للوحدة)';
+  $('salePrice').placeholder=w?'سعر البيع للوزن كله':'سعر البيع للوحدة';
+  updateCalc();
+}
+function updateCalc(){
+  const w=isW(curProd());
+  const cost=parseFloat($('saleCost').value)||0;
+  const q=Math.abs(parseFloat($('saleQty').value)||(w?0:1));
+  const price=parseFloat($('salePrice').value);
+  const ct=cost*(w?q/1000:q);
+  let t=(w?('تكلفة '+q+' جم: '):'التكلفة: ')+fmt(ct);
+  if(price>0){const st=w?price:price*q;t+=' | إجمالي البيع: '+fmt(st)+' | الربح: '+fmt(st-ct)}
+  $('calcLine').textContent=((cost>0&&q>0)||price>0)?t:'';
 }
 function outside(e){if(!e.target.closest('.sugg'))hideSugg()}
 document.addEventListener('click',outside);
@@ -358,30 +403,34 @@ document.addEventListener('touchstart',outside,{passive:true});
 /* 4. المبيعات */
 function addSale(type){
   const name=$('saleProductName').value.trim()||'منتج عام';
-  const cost=parseFloat($('saleCost').value)||0;
-  const qty=Math.abs(parseFloat($('saleQty').value)||1);
-  const price=parseFloat($('salePrice').value);
-  if(isNaN(price)||price<=0){alert('يرجى إدخال سعر البيع للوحدة');return}
-
-  const sign=type==='-'?-1:1;
   const prod=findProd(name);
-  const tracked=hasStock(prod);
-  if(sign===1&&tracked&&qty>prod.stock){
-    if(!confirm('الكمية المطلوبة ('+qty+') أكبر من المتاح ('+(+prod.stock.toFixed(2))+'). متابعة؟'))return;
-  }
-  if(tracked)prod.stock-=sign*qty;
+  const w=isW(prod);
+  const cost=parseFloat($('saleCost').value)||0;
+  const q=Math.abs(parseFloat($('saleQty').value)||(w?0:1));
+  const price=parseFloat($('salePrice').value);
+  if(w&&!(q>0)){alert('أدخل الوزن بالجرام');return}
+  if(isNaN(price)||price<=0){alert(w?'يرجى إدخال سعر بيع الوزن كله':'يرجى إدخال سعر البيع للوحدة');return}
 
-  salesRecords.push({name,cost,qty:sign*qty,price,totalSale:price*sign*qty,totalProfit:(price-cost)*sign*qty,deducted:!!tracked});
+  const units=w?q/1000:q;
+  const saleTotal=w?price:price*q;
+  const sign=type==='-'?-1:1;
+  const tracked=hasStock(prod);
+  if(sign===1&&tracked&&units>prod.stock+1e-9){
+    if(!confirm('الكمية المطلوبة أكبر من المتاح ('+(+prod.stock.toFixed(3))+(w?' كيلو':'')+'). متابعة؟'))return;
+  }
+  if(tracked)prod.stock=Math.round((prod.stock-sign*units)*1e6)/1e6;
+
+  salesRecords.push({name,cost,qty:sign*units,price:saleTotal/units,totalSale:sign*saleTotal,totalProfit:sign*(saleTotal-cost*units),deducted:!!tracked,w:w});
   save();
   $('saleProductName').value='';$('saleCost').value='';$('saleQty').value='1';$('salePrice').value='';
-  hideSugg();updateHint();
+  hideSugg();updateHint();syncSaleUi();
   renderInventory();renderSales();
 }
 
 function removeSale(index){
   const rec=salesRecords[index];if(!rec)return;
   const prod=findProd(rec.name);
-  if(prod&&hasStock(prod)&&rec.deducted!==false)prod.stock+=rec.qty;
+  if(prod&&hasStock(prod)&&rec.deducted!==false)prod.stock=Math.round((prod.stock+rec.qty)*1e6)/1e6;
   salesRecords.splice(index,1);
   save();renderInventory();renderSales();
 }
@@ -395,7 +444,7 @@ function renderSales(){
     list.innerHTML=salesRecords.map((r,i)=>{
       sumS+=r.totalSale;sumP+=r.totalProfit;
       const ret=r.qty<0;
-      return '<li class="item'+(ret?' ret':'')+'"><div><strong class="t">'+esc(r.name)+' ('+(ret?'مرتجع: '+Math.abs(r.qty):'بيع: '+r.qty)+')</strong>'+
+      return '<li class="item'+(ret?' ret':'')+'"><div><strong class="t">'+esc(r.name)+' ('+(ret?'مرتجع: ':'بيع: ')+qtyLabel(r)+')</strong>'+
         '<span class="m">إجمالي البيع: '+fmt(r.totalSale)+' | الربح: '+fmt(r.totalProfit)+'</span></div>'+
         '<button class="x press" onclick="removeSale('+i+')" aria-label="حذف">&times;</button></li>';
     }).join('');
@@ -441,8 +490,8 @@ function showDayDetails(i){
   $('dayDetailsTitle').textContent=d.date+' ('+d.timestamp+')';
   $('dayDetailsContent').innerHTML=d.items.map(it=>
     '<div class="item" style="display:block"><div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:4px"><span>'+
-    esc(it.name)+' (الكمية: '+it.qty+')</span><span>'+fmt(it.totalSale)+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:11px"><span>سعر البيع: '+it.price+' | الجملة: '+it.cost+
+    esc(it.name)+' ('+(it.qty<0?'مرتجع: ':'الكمية: ')+qtyLabel(it)+')</span><span>'+fmt(it.totalSale)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:11px"><span>سعر البيع: '+fmt(it.price)+' | الجملة: '+fmt(it.cost)+
     '</span><span class="green">صافي الربح: '+fmt(it.totalProfit)+'</span></div></div>'
   ).join('');
   $('dayDetailsModal').classList.add('on');
