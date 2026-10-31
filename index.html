@@ -117,6 +117,14 @@ ul{list-style:none;margin:0;padding:0}
 .day{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px;border-radius:12px;font-size:12px;
   background:rgba(11,15,23,.7);border:1px solid rgba(100,116,139,.4)}
 .dayhead{font-size:15px;font-weight:700;margin-bottom:12px;text-align:center;line-height:1.6}
+.mnav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.mnav b{font-size:17px;text-align:center;flex:1}
+.mbtn{flex:none;width:46px;height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);
+  color:#e2e8f0;font-size:22px;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center}
+.amt{flex:none;font-size:15px;font-weight:700;color:#f1f5f9;white-space:nowrap}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:13px;border-radius:12px;font-size:13px;
+  background:rgba(11,15,23,.7);border:1px solid rgba(255,255,255,.1)}
+.mrow.sel{border-color:rgba(56,189,248,.6)}
 .green{color:#34d399}
 .center{text-align:center}
 </style>
@@ -133,6 +141,8 @@ ul{list-style:none;margin:0;padding:0}
     <button class="nav-btn glass press" onclick="openScreen('scrPricing')">سعر البيع</button>
     <button class="nav-btn glass press" onclick="openScreen('scrInventory')">دليل المنتجات</button>
     <button class="nav-btn glass press" onclick="openScreen('scrSales')">تسجيل المبيعات</button>
+    <button class="nav-btn glass press" onclick="openScreen('scrShop')">مصاريف المحل</button>
+    <button class="nav-btn glass press" onclick="openScreen('scrPersonal')">المصاريف والسحوبات الشخصية</button>
     <button class="nav-btn glass press" onclick="openScreen('scrBackup')">نسخ ونقل البيانات</button>
   </nav>
 </div>
@@ -162,13 +172,12 @@ ul{list-style:none;margin:0;padding:0}
       <div class="col">
         <input class="inp" type="text" id="invName" placeholder="اسم المنتج (مثال: أرز، زيت، سكر...)" autocomplete="off">
         <input class="inp" type="number" inputmode="decimal" step="any" id="invCost" placeholder="سعر الجملة للوحدة">
-        <label class="chk"><input type="checkbox" id="invWeight" onchange="syncInvUi()"> يُباع بالوزن (سعر الجملة للكيلو والبيع بالجرام)</label>
+        <label class="chk"><input type="checkbox" id="invWeight" onchange="syncInvUi()"> يُباع بالوزن (بالكيلو)</label>
         <input class="inp" type="number" inputmode="decimal" step="any" id="invQty" placeholder="الكمية المتاحة (اختياري)">
-        <p class="sub" style="margin:0">لو سجّلت كمية هتتخصم تلقائياً مع كل بيعة. ولو سيبتها فاضية المنتج بيتسجل من غير متابعة مخزون. لو المنتج موجود والكمية مكتوبة بتتضاف على المتاح، وتقدر تغيّر سعر الجملة بنفس الاسم.</p>
         <button class="btn b-green press" onclick="saveProduct()">حفظ المنتج في الدليل</button>
       </div>
     </div>
-    <p class="sub">المنتجات المسجلة (ترتيب أبجدي تلقائي):</p>
+    <p class="sub">المنتجات المسجلة:</p>
     <ul id="inventoryList" class="list"></ul>
   </div>
 </div>
@@ -202,8 +211,7 @@ ul{list-style:none;margin:0;padding:0}
 <div id="scrBackup" class="screen">
   <div class="sh"><h2>نسخ ونقل البيانات</h2><button class="xbtn press" onclick="closeScreen()" aria-label="إغلاق">&times;</button></div>
   <div class="sbody center">
-    <p class="sub" style="margin:8px 0 24px;line-height:1.8">حفظ أو استرجاع كافة سجلات البيانات والمخزون بملف واحد على هاتفك.</p>
-    <div class="col">
+    <div class="col" style="margin-top:8px">
       <button class="btn b-plain press" onclick="exportData()">تصدير وحفظ ملف البيانات (.json)</button>
       <label class="btn b-plain press" style="display:block;cursor:pointer">
         استيراد ملف البيانات من الجهاز
@@ -211,6 +219,18 @@ ul{list-style:none;margin:0;padding:0}
       </label>
     </div>
   </div>
+</div>
+
+<!-- ============ مصاريف المحل ============ -->
+<div id="scrShop" class="screen">
+  <div class="sh"><h2>مصاريف المحل</h2><button class="xbtn press" onclick="closeScreen()" aria-label="إغلاق">&times;</button></div>
+  <div class="sbody" id="shopBody"></div>
+</div>
+
+<!-- ============ المصاريف والسحوبات الشخصية ============ -->
+<div id="scrPersonal" class="screen">
+  <div class="sh"><h2>المصاريف والسحوبات الشخصية</h2><button class="xbtn press" onclick="closeScreen()" aria-label="إغلاق">&times;</button></div>
+  <div class="sbody" id="personalBody"></div>
 </div>
 
 <!-- ============ سجل الأيام ============ -->
@@ -244,7 +264,7 @@ ul{list-style:none;margin:0;padding:0}
 </div>
 
 <script>
-const K_INV='myApp_inventory',K_SALES='myApp_sales',K_DAYS='myApp_savedDays';
+const K_INV='myApp_inventory',K_SALES='myApp_sales',K_DAYS='myApp_savedDays',K_EXP='myApp_expenses',K_MSUM='myApp_monthSummaries';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').toLowerCase().replace(/[ً-ْـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
@@ -307,12 +327,23 @@ let inventory=cleanInv(load(K_INV));
 let salesRecords=load(K_SALES).map(normRec).filter(Boolean);
 let savedDays=load(K_DAYS).map(normDay).filter(Boolean);
 sortDays();
+function loadObj(k){try{const v=JSON.parse(localStorage.getItem(k));return(v&&typeof v==='object'&&!Array.isArray(v))?v:{}}catch(e){return{}}}
+function normExp(e){
+  if(!e||typeof e!=='object')return null;
+  e.id=cleanId(e.id);e.kind=e.kind==='personal'?'personal':'shop';
+  e.desc=String(e.desc||'');e.amount=num(e.amount,0);e.at=num(e.at,Date.now());
+  return e;
+}
+let expenses=load(K_EXP).map(normExp).filter(Boolean);
+let monthSum=loadObj(K_MSUM);
 
 function save(){
   try{
     localStorage.setItem(K_INV,JSON.stringify(inventory));
     localStorage.setItem(K_SALES,JSON.stringify(salesRecords));
     localStorage.setItem(K_DAYS,JSON.stringify(savedDays));
+    localStorage.setItem(K_EXP,JSON.stringify(expenses));
+    localStorage.setItem(K_MSUM,JSON.stringify(monthSum));
   }catch(e){alert('تعذر حفظ البيانات: التخزين ممتلئ أو معطّل في المتصفح')}
 }
 
@@ -731,6 +762,9 @@ function closeMonth(){
     unclosedCurrentDaySales:salesRecords
   };
   downloadFile('monthly_report_'+new Date().toISOString().slice(0,7)+'.json',JSON.stringify(data,null,2),'application/json');
+  const addSum=(key,s,p,n)=>{const o=monthSum[key]||{sales:0,profit:0,days:0};o.sales=num(o.sales,0)+s;o.profit=num(o.profit,0)+p;o.days=num(o.days,0)+n;monthSum[key]=o};
+  savedDays.forEach(d=>addSum(mkey(isFinite(d.at)?d.at:Date.now()),d.totalSales,d.totalProfit,1));
+  if(salesRecords.length){const t=sumRecs(salesRecords);addSum(mkey(Date.now()),t.s,t.p,0)}
   savedDays=[];salesRecords=[];
   save();refreshAll();
   alert('تم تقفيل الشهر وتصدير الملف بنجاح!');
@@ -739,7 +773,7 @@ function closeMonth(){
 /* ---------- 4) النسخ الاحتياطي ---------- */
 function exportData(){
   downloadFile('full_app_backup_'+new Date().toISOString().slice(0,10)+'.json',
-    JSON.stringify({inventory,salesRecords,savedDays},null,2),'application/json');
+    JSON.stringify({inventory,salesRecords,savedDays,expenses,monthSummaries:monthSum},null,2),'application/json');
 }
 function importData(ev){
   const file=ev.target.files[0];if(!file)return;
@@ -752,7 +786,10 @@ function importData(ev){
       inventory=cleanInv(d.inventory);
       salesRecords=(Array.isArray(d.salesRecords)?d.salesRecords:[]).map(normRec).filter(Boolean);
       savedDays=(Array.isArray(d.savedDays)?d.savedDays:[]).map(normDay).filter(Boolean);
-      sortDays();save();refreshAll();
+      sortDays();
+      if(Array.isArray(d.expenses))expenses=d.expenses.map(normExp).filter(Boolean);
+      if(d.monthSummaries&&typeof d.monthSummaries==='object'&&!Array.isArray(d.monthSummaries))monthSum=d.monthSummaries;
+      save();refreshAll();
       alert('تم استعادة كافة البيانات بنجاح!');
     }catch(err){alert('ملف البيانات غير صحيح')}
     finally{$('importFile').value=''}
@@ -760,14 +797,123 @@ function importData(ev){
   r.readAsText(file);
 }
 
+/* ---------- المصاريف (المحل / الشخصية) ---------- */
+const mkey=at=>{const d=new Date(at);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const mlabel=key=>{const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('ar-EG',{month:'long',year:'numeric'})};
+const dstr=at=>{const d=new Date(at);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const LT={
+  shop:{scr:'scrShop',add:'إضافة مصروف',edit:'تعديل مصروف',ph:'اتصرف في إيه؟ (إيجار، كهرباء...)',tot:'مصاريف المحل',list:'مصاريف الشهر:'},
+  personal:{scr:'scrPersonal',add:'إضافة مصروف / سحب',edit:'تعديل',ph:'إيه المصروف أو السحب؟',tot:'إجمالي المصاريف والسحوبات',list:'مصاريف وسحوبات الشهر:'}
+};
+const LED={shop:{month:mkey(Date.now()),editId:null},personal:{month:mkey(Date.now()),editId:null}};
+
+function ledgerHTML(k){
+  const L=LT[k];
+  return '<div class="mnav"><button class="mbtn press" onclick="ledShift(\''+k+'\',-1)" aria-label="الشهر السابق">&rarr;</button><b id="'+k+'Month"></b>'+
+    '<button class="mbtn press" onclick="ledShift(\''+k+'\',1)" aria-label="الشهر التالي">&larr;</button></div>'+
+    '<div id="'+k+'Boxes" class="grid2" style="margin-bottom:16px"></div>'+
+    '<div class="card glass"><h3 class="h3" id="'+k+'FormTitle">'+L.add+'</h3><div class="col">'+
+      '<input class="inp" id="'+k+'Desc" list="'+k+'DL" placeholder="'+L.ph+'" autocomplete="off"><datalist id="'+k+'DL"></datalist>'+
+      '<div class="row"><input class="inp" type="number" inputmode="decimal" step="any" id="'+k+'Amt" placeholder="المبلغ">'+
+      '<input class="inp" type="date" id="'+k+'Date"></div>'+
+      '<button class="btn b-green press" id="'+k+'SaveBtn" onclick="ledSave(\''+k+'\')">إضافة</button>'+
+      '<button class="btn b-grey press" id="'+k+'Cancel" style="display:none" onclick="ledResetForm(\''+k+'\')">إلغاء التعديل</button></div></div>'+
+    '<p class="sub">'+L.list+'</p><ul id="'+k+'List" class="list"></ul>'+
+    '<p class="sub" style="margin-top:22px">كل الشهور:</p><div id="'+k+'Months" class="list"></div>';
+}
+function defDate(k){
+  const st=LED[k],now=Date.now();
+  if(st.month===mkey(now))return dstr(now);
+  const [y,m]=st.month.split('-').map(Number);
+  return dstr(new Date(y,m,0).getTime());
+}
+function ledResetForm(k){
+  LED[k].editId=null;
+  $(k+'Desc').value='';$(k+'Amt').value='';$(k+'Date').value=defDate(k);
+  $(k+'FormTitle').textContent=LT[k].add;$(k+'SaveBtn').textContent='إضافة';$(k+'Cancel').style.display='none';
+}
+function monthProfit(key){
+  let has=false,p=0;
+  savedDays.forEach(d=>{if(mkey(isFinite(d.at)?d.at:Date.now())===key){has=true;p+=d.totalProfit}});
+  const s=monthSum[key];if(s){has=true;p+=num(s.profit,0)}
+  return {has,profit:p};
+}
+function ledShift(k,delta){
+  const [y,m]=LED[k].month.split('-').map(Number);
+  LED[k].month=mkey(new Date(y,m-1+delta,1).getTime());
+  ledResetForm(k);ledRender(k);
+}
+function ledGo(k,key){LED[k].month=key;ledResetForm(k);ledRender(k);$(LT[k].scr).scrollTop=0}
+function ledRender(k){
+  const L=LT[k],st=LED[k];
+  const all=expenses.filter(e=>e.kind===k);
+  const cur=all.map((e,i)=>({e,i})).filter(x=>mkey(x.e.at)===st.month).sort((a,b)=>b.e.at-a.e.at||b.i-a.i).map(x=>x.e);
+  const total=cur.reduce((a,e)=>a+e.amount,0);
+  $(k+'Month').textContent=mlabel(st.month);
+  let boxes='<div class="box tot" style="grid-column:1/-1"><span class="k">'+L.tot+'</span><span class="v" style="font-size:20px">'+fmt(total)+'</span></div>';
+  if(k==='shop'){
+    const mp=monthProfit(st.month);
+    if(mp.has){
+      const net=mp.profit-total;
+      boxes+='<div class="box tot g"><span class="k">أرباح المبيعات</span><span class="v">'+fmt(mp.profit)+'</span></div>'+
+        '<div class="box tot"><span class="k">الصافي بعد المصاريف</span><span class="v" style="color:'+(net<0?'#fb7185':'#34d399')+'">'+fmt(net)+'</span></div>';
+    }
+  }
+  $(k+'Boxes').innerHTML=boxes;
+  $(k+'List').innerHTML=cur.length?cur.map(e=>
+    '<li class="item"><div class="info"><strong class="t">'+esc(e.desc)+'</strong><span class="m">'+
+    esc(new Date(e.at).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'}))+'</span></div>'+
+    '<span class="amt">'+fmt(e.amount)+'</span>'+
+    '<div class="acts"><button class="ed press" onclick="ledEdit(\''+k+'\',\''+e.id+'\')" aria-label="تعديل">✎</button>'+
+    '<button class="x press" onclick="ledDel(\''+k+'\',\''+e.id+'\')" aria-label="حذف">&times;</button></div></li>'
+  ).join(''):'<li class="empty">لا توجد مصاريف في هذا الشهر</li>';
+  const by={};all.forEach(e=>{const key=mkey(e.at);(by[key]=by[key]||{n:0,t:0});by[key].n++;by[key].t+=e.amount});
+  by[st.month]=by[st.month]||{n:0,t:0};
+  $(k+'Months').innerHTML=Object.keys(by).sort().reverse().map(key=>
+    '<div class="mrow press'+(key===st.month?' sel':'')+'" onclick="ledGo(\''+k+'\',\''+key+'\')"><span><b>'+esc(mlabel(key))+'</b> <span style="color:#94a3b8">('+by[key].n+')</span></span><b>'+fmt(by[key].t)+'</b></div>'
+  ).join('');
+  const seen={};
+  $(k+'DL').innerHTML=all.map(e=>e.desc).filter(d=>d&&!seen[norm(d)]&&(seen[norm(d)]=1)).map(d=>'<option value="'+esc(d)+'">').join('');
+}
+function ledSave(k){
+  const desc=$(k+'Desc').value.trim(),amt=parseFloat($(k+'Amt').value),dv=$(k+'Date').value;
+  if(!desc){alert('اكتب بيان المصروف');return}
+  if(isNaN(amt)||amt<=0){alert('أدخل المبلغ');return}
+  if(!dv){alert('اختر التاريخ');return}
+  const [y,m,d]=dv.split('-').map(Number);
+  const at=new Date(y,m-1,d,12,0,0).getTime();
+  if(!isFinite(at)){alert('تاريخ غير صحيح');return}
+  const st=LED[k];
+  const ex=st.editId&&expenses.find(e=>e.id===st.editId&&e.kind===k);
+  if(ex){ex.desc=desc;ex.amount=amt;ex.at=at}
+  else expenses.push({id:uid(),kind:k,desc:desc,amount:amt,at:at});
+  st.month=mkey(at);
+  save();ledResetForm(k);ledRender(k);
+}
+function ledEdit(k,id){
+  const e=expenses.find(x=>x.id===id&&x.kind===k);if(!e)return;
+  LED[k].editId=id;
+  $(k+'Desc').value=e.desc;$(k+'Amt').value=e.amount;$(k+'Date').value=dstr(e.at);
+  $(k+'FormTitle').textContent=LT[k].edit;$(k+'SaveBtn').textContent='حفظ التعديل';$(k+'Cancel').style.display='block';
+  $(LT[k].scr).scrollTop=0;
+}
+function ledDel(k,id){
+  const e=expenses.find(x=>x.id===id&&x.kind===k);if(!e)return;
+  if(!confirm('حذف "'+e.desc+'" ('+fmt(e.amount)+')؟'))return;
+  expenses.splice(expenses.indexOf(e),1);
+  if(LED[k].editId===id)ledResetForm(k);
+  save();ledRender(k);
+}
+
 /* ---------- تحديث كل العروض ---------- */
 function refreshAll(){
-  renderInventory();renderSales();renderHistory();
+  renderInventory();renderSales();renderHistory();ledRender('shop');ledRender('personal');
   if(stack.includes('scrDay'))renderDay();
   ['s','o','e'].forEach(p=>{if(LF[p]&&$(p+'Name'))lfHint(p)});
 }
 
 /* ---------- بدء التشغيل ---------- */
+['shop','personal'].forEach(k=>{$(k+'Body').innerHTML=ledgerHTML(k);ledResetForm(k)});
 $('sForm').innerHTML=lineFormHTML('s')+
   '<div class="row"><button class="btn b-green press" onclick="addSale(\'+\')">إضافة (+)</button>'+
   '<button class="btn b-rose press" onclick="addSale(\'-\')">خصم / مرتجع (-)</button></div>'+
