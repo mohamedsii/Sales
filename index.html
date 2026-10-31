@@ -36,6 +36,9 @@ nav{display:flex;flex-direction:column;gap:14px}
 .nav-btn{width:100%;padding:18px 16px;border-radius:16px;border:1px solid rgba(100,116,139,.45);
   color:#e2e8f0;font-size:17px;font-weight:600;font-family:inherit;text-align:center;display:flex;align-items:center;justify-content:center}
 .nav-btn:active{background:rgba(30,41,59,.9)}
+.nav-btn.accent{background:linear-gradient(145deg,rgba(16,185,129,.20),rgba(15,19,28,.98) 80%);
+  border:1px solid rgba(52,211,153,.5);color:#a7f3d0;box-shadow:0 0 22px -6px rgba(16,185,129,.35),inset 0 1px 0 0 rgba(255,255,255,.08)}
+.nav-btn.accent:active{background:linear-gradient(145deg,rgba(16,185,129,.3),rgba(15,19,28,.98) 80%)}
 
 /* الواجهات الكاملة */
 .screen{position:fixed;inset:0;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -125,6 +128,13 @@ ul{list-style:none;margin:0;padding:0}
 .mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:13px;border-radius:12px;font-size:13px;
   background:rgba(11,15,23,.7);border:1px solid rgba(255,255,255,.1)}
 .mrow.sel{border-color:rgba(56,189,248,.6)}
+.b-amber{background:linear-gradient(145deg,#d97706,#b45309);box-shadow:0 8px 20px -8px rgba(180,83,9,.6)}
+.qmodal{position:fixed;inset:0;z-index:200;display:none;align-items:flex-start;justify-content:center;
+  padding:calc(12vh + env(safe-area-inset-top)) 20px 20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.qmodal.on{display:flex}
+.qcard{width:100%;max-width:300px;border-radius:18px;padding:16px;animation:slide .18s ease}
+.qhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:15px}
+.qx{width:36px;height:36px;font-size:22px}
 .green{color:#34d399}
 .center{text-align:center}
 </style>
@@ -140,7 +150,8 @@ ul{list-style:none;margin:0;padding:0}
   <nav>
     <button class="nav-btn glass press" onclick="openScreen('scrPricing')">سعر البيع</button>
     <button class="nav-btn glass press" onclick="openScreen('scrInventory')">دليل المنتجات</button>
-    <button class="nav-btn glass press" onclick="openScreen('scrSales')">تسجيل المبيعات</button>
+    <button class="nav-btn accent glass press" onclick="openScreen('scrSales')">تسجيل المبيعات</button>
+    <button class="nav-btn glass press" onclick="openScreen('scrGoods')">مشتريات البضاعة</button>
     <button class="nav-btn glass press" onclick="openScreen('scrShop')">مصاريف المحل</button>
     <button class="nav-btn glass press" onclick="openScreen('scrPersonal')">المصاريف والسحوبات الشخصية</button>
     <button class="nav-btn glass press" onclick="openScreen('scrBackup')">نسخ ونقل البيانات</button>
@@ -170,11 +181,13 @@ ul{list-style:none;margin:0;padding:0}
   <div class="sbody">
     <div class="card glass">
       <div class="col">
-        <input class="inp" type="text" id="invName" placeholder="اسم المنتج (مثال: أرز، زيت، سكر...)" autocomplete="off">
+        <h3 class="h3" id="invFormTitle" style="display:none;margin:0">تعديل منتج</h3>
+        <input class="inp" type="text" id="invName" placeholder="اسم المنتج" autocomplete="off">
         <input class="inp" type="number" inputmode="decimal" step="any" id="invCost" placeholder="سعر الجملة للوحدة">
         <label class="chk"><input type="checkbox" id="invWeight" onchange="syncInvUi()"> يُباع بالوزن (بالكيلو)</label>
         <input class="inp" type="number" inputmode="decimal" step="any" id="invQty" placeholder="الكمية المتاحة (اختياري)">
-        <button class="btn b-green press" onclick="saveProduct()">حفظ المنتج في الدليل</button>
+        <button class="btn b-green press" id="invSaveBtn" onclick="saveProduct()">حفظ المنتج في الدليل</button>
+        <button class="btn b-grey press" id="invCancel" style="display:none" onclick="resetInvForm()">إلغاء التعديل</button>
       </div>
     </div>
     <p class="sub">المنتجات المسجلة:</p>
@@ -190,6 +203,8 @@ ul{list-style:none;margin:0;padding:0}
       <div class="box tot"><span class="k">إجمالي المبيعات</span><span class="v" id="totalSalesVal">0.00</span></div>
       <div class="box tot g"><span class="k">إجمالي صافي الربح</span><span class="v" id="totalProfitVal">0.00</span></div>
     </div>
+
+    <button class="btn b-amber press" style="margin-bottom:16px;padding:15px;font-size:15px" onclick="openQuick()">⚡ بيع سريع</button>
 
     <div class="card glass">
       <h3 class="h3">بيعة جديدة</h3>
@@ -219,6 +234,12 @@ ul{list-style:none;margin:0;padding:0}
       </label>
     </div>
   </div>
+</div>
+
+<!-- ============ مشتريات البضاعة ============ -->
+<div id="scrGoods" class="screen">
+  <div class="sh"><h2>مشتريات البضاعة</h2><button class="xbtn press" onclick="closeScreen()" aria-label="إغلاق">&times;</button></div>
+  <div class="sbody" id="goodsBody"></div>
 </div>
 
 <!-- ============ مصاريف المحل ============ -->
@@ -261,6 +282,19 @@ ul{list-style:none;margin:0;padding:0}
 <div id="scrEdit" class="screen">
   <div class="sh"><h2 id="editTitle">تعديل بيعة</h2><button class="xbtn press" onclick="closeScreen()" aria-label="إغلاق">&times;</button></div>
   <div class="sbody" id="editBody"></div>
+</div>
+
+<!-- ============ بيع سريع (نافذة عائمة) ============ -->
+<div id="quickBox" class="qmodal" onclick="if(event.target===this)closeQuick()">
+  <div class="qcard glass">
+    <div class="qhd"><b>⚡ بيع سريع</b><button class="xbtn qx press" onclick="closeQuick()" aria-label="إغلاق">&times;</button></div>
+    <div class="col">
+      <input class="inp" type="number" inputmode="decimal" step="any" id="qCost" placeholder="سعر الجملة">
+      <input class="inp" type="number" inputmode="decimal" step="any" id="qPrice" placeholder="سعر البيع">
+      <div id="qMsg" class="calc" style="min-height:18px"></div>
+      <button class="btn b-green press" onclick="quickAdd()">إضافة</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -330,7 +364,7 @@ sortDays();
 function loadObj(k){try{const v=JSON.parse(localStorage.getItem(k));return(v&&typeof v==='object'&&!Array.isArray(v))?v:{}}catch(e){return{}}}
 function normExp(e){
   if(!e||typeof e!=='object')return null;
-  e.id=cleanId(e.id);e.kind=e.kind==='personal'?'personal':'shop';
+  e.id=cleanId(e.id);e.kind=(e.kind==='personal'||e.kind==='goods')?e.kind:'shop';
   e.desc=String(e.desc||'');e.amount=num(e.amount,0);e.at=num(e.at,Date.now());
   return e;
 }
@@ -398,6 +432,14 @@ function saveProduct(){
   if(!name||isNaN(cost)||cost<0){alert('يرجى إدخال اسم المنتج وسعر الجملة بشكل صحيح');return}
   if(qty!==null&&isNaN(qty)){alert('الكمية غير صحيحة');return}
   const weight=$('invWeight').checked;
+  if(INV_EDIT){
+    const other=findProd(name);
+    if(other&&other!==INV_EDIT){alert('في منتج تاني بنفس الاسم');return}
+    if(INV_EDIT.name!==name)renameEverywhere(INV_EDIT.name,name);
+    INV_EDIT.name=name;INV_EDIT.cost=cost;INV_EDIT.weight=weight;INV_EDIT.stock=qty;
+    inventory.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+    save();resetInvForm();refreshAll();return;
+  }
   const ex=findProd(name);
   if(ex){
     ex.cost=cost;ex.weight=weight;
@@ -407,14 +449,42 @@ function saveProduct(){
   }
   inventory.sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   save();
+  resetInvForm();
+  refreshAll();
+}
+let INV_EDIT=null;
+function resetInvForm(){
+  INV_EDIT=null;
   ['invName','invCost','invQty'].forEach(i=>$(i).value='');
   $('invWeight').checked=false;syncInvUi();
-  refreshAll();
+  $('invFormTitle').style.display='none';
+  $('invSaveBtn').textContent='حفظ المنتج في الدليل';
+  $('invCancel').style.display='none';
+}
+function editProduct(i){
+  const p=inventory[i];if(!p)return;
+  INV_EDIT=p;
+  $('invName').value=p.name;$('invCost').value=p.cost;
+  $('invWeight').checked=!!p.weight;syncInvUi();
+  $('invQty').value=hasStock(p)?+p.stock.toFixed(3):'';
+  $('invFormTitle').style.display='block';
+  $('invSaveBtn').textContent='حفظ التعديل';
+  $('invCancel').style.display='block';
+  $('scrInventory').scrollTop=0;
+}
+function renameEverywhere(oldN,newN){
+  const o=norm(oldN);
+  const fix=r=>{
+    if(Array.isArray(r.items))r.items.forEach(i=>{if(norm(i.name)===o)i.name=newN});
+    else if(norm(r.name)===o)r.name=newN;
+  };
+  salesRecords.forEach(fix);savedDays.forEach(d=>d.items.forEach(fix));
 }
 function deleteProduct(index){
   const p=inventory[index];
   if(!p||!confirm('حذف "'+p.name+'" من الدليل؟'))return;
   inventory.splice(index,1);
+  if(INV_EDIT===p)resetInvForm();
   save();refreshAll();
 }
 function renderInventory(){
@@ -424,14 +494,14 @@ function renderInventory(){
   list.innerHTML=inventory.map((it,i)=>
     '<li class="item"><div class="info"><strong class="t">'+esc(it.name)+'</strong><span class="m">الجملة: '+fmt(it.cost)+(it.weight?' / كيلو':'')+
     (hasStock(it)?' | المتاح: '+(+it.stock.toFixed(3))+(it.weight?' كيلو':(it.unit?' '+esc(it.unit):'')):'')+
-    '</span></div><div class="acts"><button class="x press" onclick="deleteProduct('+i+')" aria-label="حذف">&times;</button></div></li>'
+    '</span></div><div class="acts"><button class="ed press" onclick="editProduct('+i+')" aria-label="تعديل">✎</button><button class="x press" onclick="deleteProduct('+i+')" aria-label="حذف">&times;</button></div></li>'
   ).join('');
 }
 
 /* ---------- نموذج سطر البيع (مشترك: بيعة / طلبية / تعديل) ---------- */
 const LF={};
 function lineFormHTML(p){
-  return '<div class="sugg"><input class="inp" type="text" id="'+p+'Name" placeholder="اسم المنتج (اكتب حرفين لتظهر النتائج)..." autocomplete="off" autocorrect="off" autocapitalize="off" oninput="lfName(\''+p+'\')" onfocus="lfName(\''+p+'\',1)"><div id="'+p+'Sugg" class="sugg-list"></div></div>'+
+  return '<div class="sugg"><input class="inp" type="text" id="'+p+'Name" placeholder="اسم المنتج" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="lfName(\''+p+'\')" onfocus="lfName(\''+p+'\',1)"><div id="'+p+'Sugg" class="sugg-list"></div></div>'+
   '<div id="'+p+'Hint" class="hint"></div>'+
   '<div class="row"><input class="inp" type="number" inputmode="decimal" step="any" id="'+p+'Cost" placeholder="سعر الجملة" oninput="lfCalc(\''+p+'\')">'+
   '<input class="inp" type="number" inputmode="decimal" step="any" id="'+p+'Qty" placeholder="الكمية" value="1" oninput="lfCalc(\''+p+'\')"></div>'+
@@ -631,7 +701,7 @@ function openOrder(editRec){
   OB={items:editRec?JSON.parse(JSON.stringify(editRec.items)).map(i=>{i.qty=Math.abs(i.qty);return i}):[],editRec:editRec||null};
   $('orderTitle').textContent=editRec?'تعديل طلبية':'طلبية جديدة';
   $('orderBody').innerHTML=
-    '<div class="card glass"><label class="lbl">اسم العميل / ملاحظة (اختياري)</label><input class="inp" id="oCust" placeholder="مثال: أحمد" autocomplete="off"></div>'+
+    '<div class="card glass"><label class="lbl">اسم العميل / ملاحظة (اختياري)</label><input class="inp" id="oCust" placeholder="الاسم" autocomplete="off"></div>'+
     '<div class="card glass"><h3 class="h3">إضافة صنف للطلبية</h3><div class="col">'+lineFormHTML('o')+
       '<button class="btn b-green press" onclick="orderAddItem()">إضافة الصنف للطلبية</button></div></div>'+
     '<div class="card glass"><h3 class="h3">أصناف الطلبية (<span id="oCount">0</span>)</h3><ul id="oList" class="list"></ul>'+
@@ -797,15 +867,33 @@ function importData(ev){
   r.readAsText(file);
 }
 
+/* ---------- بيع سريع ---------- */
+function openQuick(){
+  $('qCost').value='';$('qPrice').value='';$('qMsg').textContent='';
+  $('quickBox').classList.add('on');$('qCost').focus();
+}
+function closeQuick(){$('quickBox').classList.remove('on')}
+function quickAdd(){
+  const cr=$('qCost').value.trim(),c=parseFloat(cr),pr=parseFloat($('qPrice').value);
+  if(cr===''||isNaN(c)||c<0){alert('أدخل سعر الجملة');return}
+  if(isNaN(pr)||pr<=0){alert('أدخل سعر البيع');return}
+  salesRecords.push({id:uid(),at:Date.now(),name:'بيع سريع',cost:c,qty:1,price:pr,totalSale:pr,totalProfit:pr-c,w:false,deducted:false,quick:true});
+  save();refreshAll();
+  $('qCost').value='';$('qPrice').value='';
+  $('qMsg').textContent='✓ تمت الإضافة (بيع '+fmt(pr)+' | ربح '+fmt(pr-c)+')';
+  $('qCost').focus();
+}
+
 /* ---------- المصاريف (المحل / الشخصية) ---------- */
 const mkey=at=>{const d=new Date(at);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
 const mlabel=key=>{const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('ar-EG',{month:'long',year:'numeric'})};
 const dstr=at=>{const d=new Date(at);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const LT={
-  shop:{scr:'scrShop',add:'إضافة مصروف',edit:'تعديل مصروف',ph:'اتصرف في إيه؟ (إيجار، كهرباء...)',tot:'مصاريف المحل',list:'مصاريف الشهر:'},
-  personal:{scr:'scrPersonal',add:'إضافة مصروف / سحب',edit:'تعديل',ph:'إيه المصروف أو السحب؟',tot:'إجمالي المصاريف والسحوبات',list:'مصاريف وسحوبات الشهر:'}
+  goods:{scr:'scrGoods',add:'إضافة بضاعة',edit:'تعديل',ph:'ملاحظة (اختياري)',tot:'مشتريات البضاعة',list:'مشتريات الشهر:',empty:'لا توجد مشتريات في هذا الشهر',optDesc:true,defDesc:'بضاعة'},
+  shop:{scr:'scrShop',add:'إضافة مصروف',edit:'تعديل مصروف',ph:'اتصرف في إيه؟',tot:'مصاريف المحل',list:'مصاريف الشهر:',empty:'لا توجد مصاريف في هذا الشهر'},
+  personal:{scr:'scrPersonal',add:'إضافة مصروف / سحب',edit:'تعديل',ph:'إيه المصروف أو السحب؟',tot:'إجمالي المصاريف والسحوبات',list:'مصاريف وسحوبات الشهر:',empty:'لا توجد مصاريف في هذا الشهر'}
 };
-const LED={shop:{month:mkey(Date.now()),editId:null},personal:{month:mkey(Date.now()),editId:null}};
+const LED={shop:{month:mkey(Date.now()),editId:null},personal:{month:mkey(Date.now()),editId:null},goods:{month:mkey(Date.now()),editId:null}};
 
 function ledgerHTML(k){
   const L=LT[k];
@@ -861,12 +949,12 @@ function ledRender(k){
   }
   $(k+'Boxes').innerHTML=boxes;
   $(k+'List').innerHTML=cur.length?cur.map(e=>
-    '<li class="item"><div class="info"><strong class="t">'+esc(e.desc)+'</strong><span class="m">'+
+    '<li class="item"><div class="info"><strong class="t">'+esc(e.desc||L.defDesc||'')+'</strong><span class="m">'+
     esc(new Date(e.at).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'}))+'</span></div>'+
     '<span class="amt">'+fmt(e.amount)+'</span>'+
     '<div class="acts"><button class="ed press" onclick="ledEdit(\''+k+'\',\''+e.id+'\')" aria-label="تعديل">✎</button>'+
     '<button class="x press" onclick="ledDel(\''+k+'\',\''+e.id+'\')" aria-label="حذف">&times;</button></div></li>'
-  ).join(''):'<li class="empty">لا توجد مصاريف في هذا الشهر</li>';
+  ).join(''):'<li class="empty">'+L.empty+'</li>';
   const by={};all.forEach(e=>{const key=mkey(e.at);(by[key]=by[key]||{n:0,t:0});by[key].n++;by[key].t+=e.amount});
   by[st.month]=by[st.month]||{n:0,t:0};
   $(k+'Months').innerHTML=Object.keys(by).sort().reverse().map(key=>
@@ -877,7 +965,7 @@ function ledRender(k){
 }
 function ledSave(k){
   const desc=$(k+'Desc').value.trim(),amt=parseFloat($(k+'Amt').value),dv=$(k+'Date').value;
-  if(!desc){alert('اكتب بيان المصروف');return}
+  if(!desc&&!LT[k].optDesc){alert('اكتب بيان المصروف');return}
   if(isNaN(amt)||amt<=0){alert('أدخل المبلغ');return}
   if(!dv){alert('اختر التاريخ');return}
   const [y,m,d]=dv.split('-').map(Number);
@@ -899,7 +987,7 @@ function ledEdit(k,id){
 }
 function ledDel(k,id){
   const e=expenses.find(x=>x.id===id&&x.kind===k);if(!e)return;
-  if(!confirm('حذف "'+e.desc+'" ('+fmt(e.amount)+')؟'))return;
+  if(!confirm('حذف "'+(e.desc||LT[k].defDesc||'')+'" ('+fmt(e.amount)+')؟'))return;
   expenses.splice(expenses.indexOf(e),1);
   if(LED[k].editId===id)ledResetForm(k);
   save();ledRender(k);
@@ -907,13 +995,13 @@ function ledDel(k,id){
 
 /* ---------- تحديث كل العروض ---------- */
 function refreshAll(){
-  renderInventory();renderSales();renderHistory();ledRender('shop');ledRender('personal');
+  renderInventory();renderSales();renderHistory();ledRender('shop');ledRender('personal');ledRender('goods');
   if(stack.includes('scrDay'))renderDay();
   ['s','o','e'].forEach(p=>{if(LF[p]&&$(p+'Name'))lfHint(p)});
 }
 
 /* ---------- بدء التشغيل ---------- */
-['shop','personal'].forEach(k=>{$(k+'Body').innerHTML=ledgerHTML(k);ledResetForm(k)});
+['shop','personal','goods'].forEach(k=>{$(k+'Body').innerHTML=ledgerHTML(k);ledResetForm(k)});
 $('sForm').innerHTML=lineFormHTML('s')+
   '<div class="row"><button class="btn b-green press" onclick="addSale(\'+\')">إضافة (+)</button>'+
   '<button class="btn b-rose press" onclick="addSale(\'-\')">خصم / مرتجع (-)</button></div>'+
